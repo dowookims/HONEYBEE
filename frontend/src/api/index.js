@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const BASE_URL = "/api";
+const BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "http://52.78.81.59:8000/api"
+    : "http://localhost:8000/api";
 
 export default {
   // Movies
@@ -46,6 +49,9 @@ export default {
   },
   setProfile(username, formData) {
     return axios.post(`${BASE_URL}/users/${username}/profile/`, formData);
+  },
+  getRecommendedMovies(username) {
+    return axios.get(`${BASE_URL}/users/${username}/recm_movies/`);
   },
   login(params) {
     return axios.post(`${BASE_URL}/login/`, params);
