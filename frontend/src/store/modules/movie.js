@@ -60,7 +60,7 @@ const actions = {
     if (state.audience.length)
       if (state.audience[0].movie_id === id) start = state.audience.length;
     const res = await api.getAudience(id, { start });
-    commit("setAudience", res.data.data);
+    commit("setAudience", res.data);
   },
   async getRecommendatinosById({ commit }, id) {
     const res = await api.getRecommendations(id);
