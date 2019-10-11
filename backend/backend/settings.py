@@ -14,7 +14,7 @@ import os
 import datetime
 import json
 
-production = os.environ.get("NODE_ENV", False)
+NODE_ENV = os.environ.get("NODE_ENV", "develop")
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,9 +28,10 @@ SECRET_KEY = os.environ.get(
 SECRET = "honeybee"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False if production else True
+DEBUG = False if NODE_ENV == "production" else True
 
-ALLOWED_HOSTS = ['52.78.81.59'] if production else ['localhost']
+ALLOWED_HOSTS = [
+    '52.78.81.59'] if NODE_ENV == "production" else ['localhost']
 
 
 # Application definition
@@ -107,8 +108,10 @@ DATABASES = {
 # CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = ['http://52.78.81.59:8080', 'http://52.78.81.59:8081'] if production else [
-    'http://localhost:8080', 'http://localhost:8081']
+CORS_ORIGIN_WHITELIST = ['http://52.78.81.59',
+                         'http://52.78.81.59:8081',
+                         'http://localhost:8080',
+                         'http://localhost:8081']
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
@@ -158,6 +161,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 AUTH_USER_MODEL = "accounts.User"
+LOGIN_URL = "/api/login/"
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSE": (

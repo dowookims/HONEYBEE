@@ -1,6 +1,7 @@
 # python, django libraries
 import json
 import datetime
+import os
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
@@ -25,6 +26,8 @@ from .forms import CustomUserAuthenticationForm, CustomUserCreateForm, CustomUse
 from api.serializers import MovieSerializer, RatingSerializer
 from .serializers import UserSerializer
 
+NODE_ENV = os.environ.get("NODE_ENV", "develop")
+BASE_URL = "http://52.78.81.59:8000" if NODE_ENV == "production" else "http://localhost:8000"
 
 # 회원가입
 @api_view(["POST"])
@@ -101,7 +104,6 @@ def user_detail(request, username):
                     return Response(status=status.HTTP_202_ACCEPTED)
             req_user.refresh_token = ""
             req_user.save()
-            auth_logout(request)
             return Response(data={"error": "token"}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
         return Response(data={"error": "입력된 값이 없습니다."}, status=status.HTTP_204_NO_CONTENT)
 
@@ -130,7 +132,6 @@ def user_detail(request, username):
 
             user.refresh_token = ""
             user.save()
-            auth_logout(request)
             return Response(data={"error": "token"}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
         return Response(data={"error": "입력값이 없습니다."}, status=status.HTTP_204_NO_CONTENT)
 
@@ -156,7 +157,7 @@ def profile_image(request, username):
     if image:
         user.image = image
         user.save()
-        return Response(data={"image": user.image.url}, status=status.HTTP_200_OK)
+        return Response(data={"image": BASE_URL + user.image.url}, status=status.HTTP_200_OK)
     else:
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -205,7 +206,6 @@ def subscribe(request):
             return Response(status=status.HTTP_202_ACCEPTED)
     user.refresh_token = ""
     user.save()
-    auth_logout(request)
     return Response(data={"error": "token"}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
 
 
@@ -233,8 +233,6 @@ def login(request):
 
         user.save()
 
-        auth_login(request, user)
-
         response = {
             "token": token,
             "username": user.username,
@@ -248,31 +246,37 @@ def login(request):
         return Response(data=error, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
 
 
-@login_required
+# @login_required
 @api_view(["POST"])
 def logout(request):
     username = request.data.get("username", None)
+    token = request.data.get("token", None)
     user = get_object_or_404(User, username=username)
-    user.refresh_token = ""
-    user.save()
-
-    auth_logout(request)
-    return Response(status=status.HTTP_202_ACCEPTED)
+    if token == user.refresh_token:
+        user.refresh_token = ""
+        user.save()
+        return Response(status=status.HTTP_202_ACCEPTED)
+    return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
 # 사용자 별 맞춤 추천영화
 # @login_required
-@api_view(['GET'])
+@api_view(['POST'])
 def recommended_movies(request, username):
-    query = Q()
-
     user = get_object_or_404(User, username=username)
-    recommended_movies_data = RecommendedMovie.objects.filter(
-        user=user).values('movie')[:3]
+    token = request.data.get("token", None)
+    if token == user.refresh_token:
+        response = verify_token(token)
+        if response.status_code != 200:
+            response = refresh_token(token)
+            if response.status_code == 200:
+                new_token = json.loads(response.text)["token"]
+                user.refresh_token = new_token
 
-    for data in recommended_movies_data:
-        query.add(Q(pk__exact=data['movie']), query.OR)
-
-    recommended_movies = Movie.objects.filter(query)
-    serializer = MovieSerializer(recommended_movies, many=True)
-    return Response(data=serializer.data, status=status.HTTP_202_ACCEPTED)
+        if response and response.status_code == 200:
+            recommended_movies = user.rcmd_movies.all()[:3]
+            movies = [Movie.objects.get(id=data.movie_id)
+                      for data in recommended_movies]
+            serializer = MovieSerializer(movies, many=True)
+            return Response(data=serializer.data, status=status.HTTP_202_ACCEPTED)
+    return Response(data={"error": "token"}, status=status.HTTP_401_UNAUTHORIZED)
