@@ -3,10 +3,14 @@ from .views import movie_views, user_views
 
 app_name = "cluster"
 
+
 urlpatterns = [
-    # clustering Movies
+    # Clustering : Movie
     path('movies/', movie_views.movie_clustering, name="movie_clustering"),
 
-    # clustering Users
+    # Clustering : User
     path('users/', user_views.user_clustering, name="user_clustering"),
+
+    # Collaborative Filtering
+    path('users/recommended_movies/', user_views.recommended_movies, name="recm_movies"),
 ]

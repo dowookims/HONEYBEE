@@ -1,16 +1,19 @@
 <template>
   <div class="image-item-detail" ref="detailView">
     <div class="image-item--img-canvas" :class="classChanger">
-      <img :src="movie.img">
+      <img :src="movie.img" />
     </div>
     <div class="detail--content-box" :class="classChanger">
       <div class="detail--close-box">
         <span @click="handleToggle">&times;</span>
       </div>
-      <h2 class="detail--title">{{ movie.title }}</h2>
+      <h2 class="detail--title">
+        <router-link :to="{name: 'detail', params: { id: movie.id } }">{{ movie.title }}</router-link>
+      </h2>
       <div class="detail--score">
         <span>평균별점</span>
-        <span>4.0</span>
+        <span>{{ movie.rating }}</span>
+        <rating-user v-if="isLogin" :movie-id="movie.id" />
       </div>
       <div v-if="active.base" class="detail--description">
         <p>{{ ellipsisDescription }}</p>
@@ -23,11 +26,7 @@
       </div>
       <div v-if="active.cluster" class="detail--related-movie">
         <div class="cluster--wrapper" :style="{ transform: 'translateX(' + -slideIndex*20 +'vw)' }">
-          <ImageRelated
-            v-for="rMovie in relativeMovie"
-            :key="rMovie.id"
-            :movie="rMovie"
-          />
+          <ImageRelated v-for="rMovie in relativeMovie" :key="rMovie.id" :movie="rMovie" />
         </div>
         <div v-if="slideIndex >= 1" class="cluster--arrow-left">
           <span @click="handleClick(-1)">
@@ -40,41 +39,53 @@
           </span>
         </div>
       </div>
+      <div v-if="active.subscribe" class="detail--subscribe">
+        <subscribe :new-sub="checkSubscribe" />
+      </div>
     </div>
     <div class="detail--movie-menu">
       <span :class="{ active: active.base }" @click="handleActive('base')">기본 정보</span>
-      <span :class="{ active: active.cluster }" @click="handleActive('cluster')">비슷한 작품</span>
+      <span v-if="relatedCheck" :class="{ active: active.cluster }" @click="handleActive('cluster')">비슷한 작품</span>
+      <span v-else :class="{ active: active.subscribe }" @click="handleActive('subscribe')">비슷한 작품</span>
     </div>
   </div>
 </template>
 
 <script>
+import ratingUser from "../detail/ratingUser";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 library.add(faArrowLeft, faArrowRight);
 
-import ImageRelated from "./imageRelated"
+import ImageRelated from "./imageRelated";
+import { mapGetters, mapState } from "vuex";
+import Subscribe from "../detail/subscribe";
 export default {
   name: "ImageItemDetail",
-  components: { ImageRelated, FontAwesomeIcon },
+  components: {Subscribe, ImageRelated, FontAwesomeIcon, ratingUser },
+  props: {related: {type: String, default: ""}, reload: {type: Function, default: () => {}}},
   data() {
     return {
       active: {
         base: true,
-        cluster: false
+        cluster: false,
+        subscribe: false
       },
-      slideIndex: 0
+      slideIndex: 0,
+      relatedCheck: false,
+      rating: 0
     };
   },
   computed: {
+    ...mapState({isLogin: state => state.user.isLogin,}),
     movie: function() {
       return this.$store.state.mvUi.activateMovie;
     },
     classChanger: function() {
       return {
         base: this.active.base,
-        cluster: this.active.cluster
+        cluster: this.active.cluster || this.active.subscribe
       };
     },
     ellipsisDescription() {
@@ -82,16 +93,41 @@ export default {
       temp.splice(temp.length - 1, temp.length);
       return temp.join(" ") + "...";
     },
-    relativeMovie(){
-      return this.$store.getters[`mvUi/relatedMovie`].map(movie => ({
-        ...movie,
-        description: movie.story.slice(0, 100),
-        img:
-          movie.stillCut ||
-          movie.poster ||
-          "https://files.slack.com/files-pri/TMJ2GPC23-FMF2L2DQA/599637c326f7d273826d.jpg"
-      }));
+    relativeMovie() {
+      if (this.related !== "") {
+        return this.$store.getters[`mvUi/relatedMovie`].map(movie => ({
+          ...movie,
+          description: movie.story.slice(0, 100),
+          img:
+                  movie.stillCut ||
+                  movie.poster ||
+                  "https://files.slack.com/files-pri/TMJ2GPC23-FMF2L2DQA/599637c326f7d273826d.jpg"
+        }));
+      }
+    },
+    ...mapGetters("user", ["username"]),
+    ...mapState({getSubscribe: state => Boolean(state.user.subscribe)})
+  },
+  watch: {
+    getSubscribe: function () {
+      this.chk();
     }
+  },
+  mounted() {
+    if (window.scrollY <= 323) {
+      window.scroll({
+        behavior: "smooth",
+        left: 0,
+        top: 300
+      });
+    } else if (window.scrollY <= 602) {
+      window.scroll({
+        behavior: "smooth",
+        left: 0,
+        top: this.$refs.detailView.clientHeight - 400
+      });
+    }
+    this.chk();
   },
   methods: {
     handleToggle: function() {
@@ -101,35 +137,39 @@ export default {
       if (state === "base") {
         this.active.base = true;
         this.active.cluster = false;
-      } else {
+        this.active.subscribe = false;
+      } else if (state === "cluster") {
         this.active.cluster = true;
+        this.active.base = false;
+        this.active.subscribe = false;
+      } else {
+        this.active.subscribe = true;
+        this.active.cluster = false;
         this.active.base = false;
       }
     },
     handleClick: function(n) {
       this.slideIndex = this.slideIndex + n;
-    }
-  },
-  mounted(){
-    if (window.scrollY <= 323){
-      window.scroll({
-        behavior: 'smooth',
-        left: 0,
-        top: 300
-      })
-    } else if (window.scrollY <= 602){
-      window.scroll({
-        behavior: 'smooth',
-        left: 0,
-        top: this.$refs.detailView.clientHeight-400
-      })
+    },
+    chk() {
+      if (this.related === "board" || this.related === "profile") {
+        this.relatedCheck = true;
+      } else {
+        this.relatedCheck = false;
+      }
+    },
+    checkSubscribe(check) {
+      if (check === true) {
+        this.handleToggle();
+        this.reload(true);
+      }
     }
   }
 };
 </script>
 
 <style lang="scss" scoped>
-@import url('https://fonts.googleapis.com/css?family=Jua|Ubuntu&display=swap');
+@import url("https://fonts.googleapis.com/css?family=Jua|Ubuntu&display=swap");
 
 .image-item-detail {
   margin-top: 30px;
@@ -153,7 +193,6 @@ export default {
   }
 }
 
-
 .detail--content-box {
   position: relative;
   display: flex;
@@ -170,9 +209,12 @@ export default {
   }
 
   h2 {
-    color: #fff;
     font-weight: 700;
     font-size: 36px;
+  }
+  a {
+    text-decoration: none;
+    color: #fff;
   }
 }
 
@@ -193,7 +235,7 @@ export default {
 
 .detail--title {
   padding: 30px 0 0 40px;
-  font-family: 'Ubuntu', sans-serif;
+  font-family: "Ubuntu", sans-serif;
 }
 
 .detail--score {
@@ -203,26 +245,30 @@ export default {
   span {
     font-weight: 700;
     font-size: 18px;
-    padding: 5px;
+    padding: 5px 10px;
+    letter-spacing: 1.8px;
 
-    &:first-child {
-      border: 1px solid #fff;
-      background-color: #111;
-      color: #fff;
-    }
+  &:first-child {
+    border: 1px solid #fff;
+    background-color: #111;
+    color: #fff;
+  }
 
-    &:nth-child(2) {
-      background-color: #fff;
-      color: #111;
-      border: 1px solid #fff;
-    }
+  &:nth-child(2) {
+    background-color: #fff;
+    color: #111;
+    border: 1px solid #fff;
   }
 }
+
+  
+}
+
 
 .detail--description {
   padding: 30px 20px 0 40px;
   p {
-    font-family: 'Ubuntu', sans-serif;
+    font-family: "Ubuntu", sans-serif;
     font-size: 18px;
     font-weight: 700;
     color: #ddd;
@@ -249,7 +295,7 @@ export default {
 
 .detail--related-movie {
   position: relative;
-  margin-top: 80px;
+  margin-top: 40px;
   max-width: 100%;
 }
 
@@ -318,5 +364,11 @@ export default {
   span + span {
     margin-left: 50px;
   }
+}
+.detail--subscribe {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 }
 </style>
