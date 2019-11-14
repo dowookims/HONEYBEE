@@ -10,7 +10,7 @@
 - 방대한 데이터를 작은 단위로 Pagenation 하여 호출
 - JWT 방식을 사용한 토큰 기반 인증 시스템
 - RESTful API 서버 구현
-- Webpack 을 통한 클라이언트 구현
+- Vue-cli를 통한 클라이언트 구현
 
 &nbsp;
 
