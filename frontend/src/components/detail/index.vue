@@ -4,10 +4,12 @@
       <img :src="imgUrl" />
     </div>
     <div class="detail--info">
-      <h1>
-        {{movie.title}}
-        <v-btn @click="follow(movie.id)">follow</v-btn>
-      </h1>
+      <div class="detail--info--header">
+        <h1>
+          {{movie.title}}
+        </h1>
+        <button @click="follow(movie.id)">follow</button>
+      </div>
       <p class="detail--info-genre">
         <span>장르</span>
         <span class="detail--info-genre-span" v-for="genre in movie.genres" :key="genre + movie.id">{{genre}}</span>
@@ -99,9 +101,6 @@
           </div>
         </div>
       </div>
-      <div class="detail--related-movie">
-        <ImageSlider />
-      </div>
     </div>
   </div>
 </template>
@@ -122,7 +121,7 @@ export default {
       );
     },
     audience() {
-      return this.$store.getters["movie/audience"].slice(0, 6);
+      return this.$store.getters["movie/audience"].slice(0,6);
     },
     recAge() {
       const rec = this.recommendations.filter(r => r.type === "age");
@@ -217,6 +216,26 @@ export default {
   }
   p + p {
     margin-top: 20px;
+  }
+}
+
+.detail--info--header {
+  display: flex;
+  h1 + button {
+    margin-left: 20px;
+  }
+  button {
+    border: 2px solid rgb(255, 177, 1);
+    border-radius: 10px;
+    font-size: 20px;
+    color: rgb(255, 177, 1);
+    padding: 8px 15px;
+    font-family: 'Jua';
+    cursor: pointer;
+    &:hover {
+      background-color: rgb(255, 177, 1);
+      color: #111;
+    }
   }
 }
 

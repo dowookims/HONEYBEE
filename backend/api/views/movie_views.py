@@ -313,6 +313,7 @@ def movie_ratings(request, movie_id):
 @api_view(['GET', 'POST'])
 def movie_followers(request, movie_id):
     movie = get_object_or_404(Movie, id=movie_id)
+    print("리퀘스트유저", request.user)
     if request.method == 'GET':
         serializer = UserSerializer(movie.followers, many=True)
         return Response(data=serializer.data, status=status.HTTP_200_OK)

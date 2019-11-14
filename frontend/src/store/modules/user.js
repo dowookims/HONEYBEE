@@ -154,6 +154,7 @@ const actions = {
   async follow({ commit }, id) {
     if (state.isLogin) {
       await api.follow(id, { username: state.username, token: state.token });
+      
       const res = await api.getFollowings(state.username);
       commit("setUserFollowings", res.data);
     }
